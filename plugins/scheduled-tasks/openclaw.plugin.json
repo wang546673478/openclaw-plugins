@@ -1,0 +1,13 @@
+{
+  "id": "scheduled-tasks",
+  "name": "Scheduled Tasks",
+  "description": "Inject scheduled tasks into conversation when their time triggers",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": { "type": "boolean", "default": true },
+      "tasksFile": { "type": "string", "default": "memory/scheduled-tasks.json" }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "id": "analytics",
+  "name": "Analytics",
+  "description": "Track tool usage, session stats, and session summaries to memory/analytics.md",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": { "type": "boolean", "default": true },
+      "analyticsFile": { "type": "string", "default": "memory/analytics.md" }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "id": "subagent-aggregate",
+  "name": "Subagent Aggregate",
+  "description": "Collect and aggregate results from subagents on subagent_ended",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": { "type": "boolean", "default": true },
+      "aggregateFile": { "type": "string", "default": "memory/subagent-results.md" }
+    }
+  }
+}

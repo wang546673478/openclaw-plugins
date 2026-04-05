@@ -1,0 +1,14 @@
+{
+  "id": "session-save",
+  "name": "Session Save",
+  "description": "Save session summary to memory/ when session ends (agent_end)",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": { "type": "boolean", "default": true },
+      "saveDir": { "type": "string", "default": "memory/sessions" },
+      "minDuration": { "type": "number", "default": 30000 }
+    }
+  }
+}

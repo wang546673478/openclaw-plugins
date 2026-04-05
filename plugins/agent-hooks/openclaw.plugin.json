@@ -1,0 +1,24 @@
+{
+  "id": "agent-hooks",
+  "name": "Agent Hooks",
+  "description": "Agent lifecycle hooks - before_prompt_build, after_tool_call, agent_end, session_start/end",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "logLevel": {
+        "type": "string",
+        "enum": ["debug", "info", "warn", "error"],
+        "default": "info"
+      },
+      "memoryDir": {
+        "type": "string",
+        "description": "Directory for memory/hook data"
+      }
+    }
+  }
+}

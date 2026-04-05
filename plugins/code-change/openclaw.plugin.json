@@ -1,0 +1,17 @@
+{
+  "id": "code-change",
+  "name": "Code Change Detection",
+  "description": "Detect code changes via exec tool (git diff/status) and log them",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": { "type": "boolean", "default": true },
+      "watchPatterns": {
+        "type": "array",
+        "items": { "type": "string" },
+        "default": ["*.ts", "*.js", "*.py", "*.md", "*.json"]
+      }
+    }
+  }
+}
