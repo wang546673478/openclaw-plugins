@@ -1,7 +1,7 @@
 /**
  * Session Save Plugin
  *
- * Saves session summary to memory/sessions/ when session ends.
+ * Saves session summary to memory/sessions/ when agent_end fires.
  * Captures: task description, key decisions, tool usage, errors.
  */
 
@@ -22,17 +22,43 @@ function getConfig(api: { pluginConfig: Record<string, unknown> }) {
   };
 }
 
+function getWorkspaceDir(ctx?: { workspaceDir?: string }): string {
+  const home = process.env.HOME || "/home/hhhh";
+  const candidates = [
+    ctx?.workspaceDir,
+    join(home, ".openclaw", "workspace"),
+    join(home, ".openclaw"),
+    process.cwd(),
+  ];
+  for (const c of candidates) {
+    if (c && existsSync(c)) return c;
+  }
+  return candidates[candidates.length - 1];
+}
+
+function extractText(content: unknown): string {
+  if (!content) return "";
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content.map(c => extractText(c)).join(" ");
+  }
+  if (typeof content === "object" && content !== null) {
+    const c = content as Record<string, unknown>;
+    if (typeof c.text === "string") return c.text;
+    if (typeof c.content === "string") return c.content;
+  }
+  return "";
+}
+
 function extractSummary(messages: unknown[]): { task: string; decisions: string[]; tools: ToolCall[] } {
   const msgs = messages as Array<{ role?: string; content?: unknown; refusal?: unknown }>;
   const userMsgs = msgs.filter(m => m.role === "user");
   const assistantMsgs = msgs.filter(m => m.role === "assistant" && !m.refusal);
 
-  // First user message as task
   const task = userMsgs[0]
     ? extractText(userMsgs[0].content).slice(0, 200)
     : "未知任务";
 
-  // Collect tool calls from assistant messages via tool_call blocks
   const toolCounts = new Map<string, number>();
   for (const msg of assistantMsgs) {
     const content = msg.content;
@@ -52,12 +78,11 @@ function extractSummary(messages: unknown[]): { task: string; decisions: string[
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count);
 
-  // Extract key decisions from assistant messages
   const decisions: string[] = [];
   const DECISION_PATTERNS = [
     /(?:决定|decision|chosen|选择|采用了|确定用|用|建|写|改|删|修复|更新)\s*[：:]\s*(.{10,80})/gi,
     /(?:结论是|所以|因此|最终|最后)[:：]\s*(.{10,80})/gi,
-    /(?:ok|okay|done|完成|好)[:：]?\s*(?:了\s*)?(.{5,50})/gi,
+    /(?:ok|okay|done|完成|好了)[:：]?\s*(?:了\s*)?(.{5,50})/gi,
     /(?:will|going to|准备)[:：]\s*(.{10,60})/gi,
   ];
 
@@ -73,8 +98,8 @@ function extractSummary(messages: unknown[]): { task: string; decisions: string[
         }
       }
     }
-    // Also extract from tool results that indicate a decision was made
-    if (text.includes("已创建") || text.includes("已更新") || text.includes("已删除") || text.includes("created") || text.includes("updated") || text.includes("deleted")) {
+    if (text.includes("已创建") || text.includes("已更新") || text.includes("已删除") ||
+        text.includes("created") || text.includes("updated") || text.includes("deleted")) {
       const lines = text.split("\n").filter(l => l.trim().length > 0).slice(0, 3);
       for (const line of lines) {
         const trimmed = line.trim().slice(0, 100);
@@ -88,42 +113,23 @@ function extractSummary(messages: unknown[]): { task: string; decisions: string[
   return { task, decisions: decisions.slice(0, 10), tools };
 }
 
-function extractText(content: unknown): string {
-  if (!content) return "";
-  if (typeof content === "string") return content;
-  if (Array.isArray(content)) {
-    return content.map(c => extractText(c)).join(" ");
-  }
-  if (typeof content === "object" && content !== null) {
-    const c = content as Record<string, unknown>;
-    if (typeof c.text === "string") return c.text;
-    if (typeof c.content === "string") return c.content;
-    return JSON.stringify(c);
-  }
-  return String(content);
-}
-
 export default definePluginEntry({
   id: "session-save",
   name: "Session Save",
   description: "Save session summary to memory/sessions/ on agent_end",
   register(api) {
+    const cfg = getConfig(api);
+
     api.on("agent_end", async (
       event: PluginHookAgentEndEvent,
-      ctx: { sessionKey?: string; sessionId?: string }
+      ctx: { workspaceDir?: string }
     ) => {
-      const cfg = getConfig(api);
-
-      if (event.durationMs && event.durationMs < cfg.minDuration) {
-        api.logger.info(`session-save: session too short (${event.durationMs}ms < ${cfg.minDuration}ms), skipping`);
-        return undefined;
-      }
-
       const { task, decisions, tools } = extractSummary(event.messages);
+
+      const sessionId = event.sessionId || ctx.sessionKey;
       const now = new Date();
       const date = now.toISOString().split("T")[0];
       const time = now.toTimeString().slice(0, 8);
-      const sessionId = ctx.sessionId || "unknown";
 
       const content = [
         `# Session ${date} ${time}`,
@@ -147,22 +153,15 @@ export default definePluginEntry({
       ].filter(Boolean).join("\n");
 
       try {
-        const dir = join(process.cwd(), cfg.saveDir);
+        const wsDir = getWorkspaceDir(ctx);
+        const dir = join(wsDir, cfg.saveDir);
         if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-
-        const filename = `${date}-${sessionId.slice(0, 8)}.md`.replace(/[^a-z0-9\-_.]/gi, "_");
-        const filepath = join(dir, filename);
-        writeFileSync(filepath, content);
-        api.logger.info(`session-save: saved to ${filepath}`);
+        writeFileSync(join(dir, `${date}-${sessionId?.split(":").pop() || "unknown"}.md`), content, "utf-8");
+        api.logger.info(`session-save: saved to ${dir}`);
       } catch (e) {
-        api.logger.info(`session-save: failed to write: ${e}`);
+        api.logger.info(`session-save: write failed — ${e}`);
       }
 
-      return undefined;
-    });
-
-    api.on("gateway_start", async () => {
-      api.logger.info("session-save plugin loaded");
       return undefined;
     });
 

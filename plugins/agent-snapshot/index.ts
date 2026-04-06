@@ -2,21 +2,12 @@
  * Agent Snapshot Plugin (P1 2.3)
  *
  * Writes subagent session snapshots to memory/snapshots/ on subagent_end.
- * Snapshot includes: task description, progress, tool calls, errors.
- *
- * Snapshot format:
- * # Snapshot - YYYY-MM-DD HH:mm
- * ## Task
- * ## Progress
- * ## State
- * ## Tool Calls
- * ## Errors
  */
 
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import type { PluginHookSubagentEndedEvent } from "openclaw/plugin-sdk/plugins/types.js";
 import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join } from "node:path";
 
 interface SnapshotConfig {
   snapshotDir: string;
@@ -28,6 +19,19 @@ function getConfig(api: { pluginConfig: Record<string, unknown> }): SnapshotConf
     snapshotDir: (api.pluginConfig?.snapshotDir as string) || "memory/snapshots",
     minDuration: (api.pluginConfig?.minDuration as number) || 30000,
   };
+}
+
+function getWorkspaceDir(): string {
+  const home = process.env.HOME || "/home/hhhh";
+  const candidates = [
+    join(home, ".openclaw", "workspace"),
+    join(home, ".openclaw"),
+    process.cwd(),
+  ];
+  for (const c of candidates) {
+    if (existsSync(c)) return c;
+  }
+  return candidates[candidates.length - 1];
 }
 
 function extractText(content: unknown): string {
@@ -66,13 +70,11 @@ function parseSessionJsonl(content: string): SessionMessage[] {
 }
 
 function sessionKeyToPath(sessionKey: string): string | null {
-  // Format: agent:main:feishu:direct:xxx
-  // Session files: ~/.openclaw/agents/<agentId>/sessions/<sessionId>.jsonl
   const parts = sessionKey.split(":");
   if (parts.length < 2) return null;
   const agentId = parts[1];
   const sessionId = parts[parts.length - 1];
-  const home = process.env.HOME || process.env.USERPROFILE || ".";
+  const home = process.env.HOME || "/home/hhhh";
   return join(home, ".openclaw", "agents", agentId, "sessions", `${sessionId}.jsonl`);
 }
 
@@ -85,17 +87,14 @@ function generateSnapshot(
   const userMsgs = messages.filter(m => m.role === "user");
   const assistantMsgs = messages.filter(m => m.role === "assistant" && !m.refusal);
 
-  // Task: first user message
   const task = userMsgs.length > 0
     ? extractText(userMsgs[0].content).slice(0, 200)
     : "(无任务描述)";
 
-  // Progress: last assistant message
   const lastAssistant = assistantMsgs.length > 0
     ? extractText(assistantMsgs[assistantMsgs.length - 1].content).slice(0, 300)
     : "(无输出)";
 
-  // Tool calls count
   const toolCalls = assistantMsgs.filter(m => {
     const content = m.content;
     if (Array.isArray(content)) {
@@ -104,7 +103,6 @@ function generateSnapshot(
     return false;
   }).length;
 
-  // Decision extraction (from last few assistant messages)
   const recentAssistant = assistantMsgs.slice(-3);
   const decisions: string[] = [];
   for (const msg of recentAssistant) {
@@ -157,7 +155,7 @@ function generateSnapshot(
   return sections.filter(Boolean).join("\n");
 }
 
-function writeSnapshot(content: string, sessionKey: string, cfg: SnapshotConfig): void {
+function writeSnapshot(content: string, sessionKey: string, wsDir: string, cfg: SnapshotConfig): void {
   try {
     const now = new Date();
     const dateStr = now.toISOString().split("T")[0];
@@ -165,13 +163,12 @@ function writeSnapshot(content: string, sessionKey: string, cfg: SnapshotConfig)
     const sessionId = sessionKey.split(":").pop() || "unknown";
     const filename = `${dateStr}-${timeStr}-${sessionId.slice(0, 8)}.md`;
 
-    const dir = join(process.cwd(), cfg.snapshotDir);
+    const dir = join(wsDir, cfg.snapshotDir);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
     const filepath = join(dir, filename);
     writeFileSync(filepath, content, "utf-8");
 
-    // Update index
     const indexPath = join(dir, "index.md");
     const indexEntry = `| ${timeStr} | ${sessionKey.split(":").pop()?.slice(0, 12)} | ${filename} |\n`;
     if (existsSync(indexPath)) {
@@ -180,63 +177,46 @@ function writeSnapshot(content: string, sessionKey: string, cfg: SnapshotConfig)
     } else {
       writeFileSync(indexPath, `# Snapshot Index\n\n| Time | Session | File |\n|------|---------|------|\n${indexEntry}`, "utf-8");
     }
-  } catch (e) {
-    // Silently fail - snapshot is non-critical
-  }
+  } catch {}
 }
 
 export default definePluginEntry({
   id: "agent-snapshot",
   name: "Agent Snapshot",
-  description: "Write subagent session snapshots to memory/snapshots/ on subagent_ended (P1 2.3)",
+  description: "Write subagent session snapshots to memory/snapshots/ on subagent_ended",
   register(api) {
     const cfg = getConfig(api);
 
     api.on("subagent_ended", async (
-      event: PluginHookSubagentEndedEvent,
-      _ctx: { requesterSessionKey?: string }
+      event: PluginHookSubagentEndedEvent
     ) => {
       try {
         const sessionKey = event.targetSessionKey;
         const outcome = event.outcome || "unknown";
         const error = event.error;
 
-        // Try to read session file
-        const sessionPath = sessionKeyToPath(sessionKey);
         let messages: SessionMessage[] = [];
+        const sessionPath = sessionKeyToPath(sessionKey);
 
         if (sessionPath && existsSync(sessionPath)) {
           try {
             const stat = statSync(sessionPath);
-            if (stat.size > 0 && stat.size < 10 * 1024 * 1024) { // < 10MB
+            if (stat.size > 0 && stat.size < 10 * 1024 * 1024) {
               const content = readFileSync(sessionPath, "utf-8");
               messages = parseSessionJsonl(content);
             }
           } catch {}
         }
 
-        if (messages.length === 0) {
-          api.logger.debug(`agent-snapshot: no messages found for ${sessionKey}`);
-        }
-
         const snapshot = generateSnapshot(messages, sessionKey, outcome, error);
-        writeSnapshot(snapshot, sessionKey, cfg);
+        const wsDir = getWorkspaceDir();
+        writeSnapshot(snapshot, sessionKey, wsDir, cfg);
 
         api.logger.info(`agent-snapshot: wrote snapshot for ${sessionKey} (outcome=${outcome}, messages=${messages.length})`);
       } catch (e) {
         api.logger.info(`agent-snapshot: error — ${e}`);
       }
 
-      return undefined;
-    });
-
-    api.on("gateway_start", async () => {
-      // Ensure snapshot dir exists
-      try {
-        const dir = join(process.cwd(), cfg.snapshotDir);
-        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-      } catch {}
-      api.logger.info("agent-snapshot plugin loaded");
       return undefined;
     });
 

@@ -27,15 +27,15 @@ function isGitCommand(cmd: string): boolean {
   return GIT_COMMANDS.some(g => base.endsWith(g) || base === g);
 }
 
-function getLogFile(): string {
-  return join(process.cwd(), "memory/code-changes.md");
+function getLogFile(wsDir: string): string {
+  return join(wsDir, "memory", "code-changes.md");
 }
 
-function logChange(entry: string) {
+function logChange(entry: string, wsDir: string) {
   try {
-    const dir = join(process.cwd(), "memory");
+    const dir = join(wsDir, "memory");
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    appendFileSync(getLogFile(), entry);
+    appendFileSync(getLogFile(wsDir), entry);
   } catch {}
 }
 
@@ -60,12 +60,17 @@ export default definePluginEntry({
       const resultText = extractResultText(result);
       const now = new Date().toISOString();
 
+      // Resolve workspace dir from ctx or fallback
+      const home = process.env.HOME || "/home/hhhh";
+      const wsDir = (ctx as { workspaceDir?: string }).workspaceDir ||
+        [join(home, ".openclaw", "workspace"), join(home, ".openclaw"), process.cwd()].find(p => existsSync(p)) || process.cwd();
+
       // Detect significant changes
       if (cmd.includes("git status") && resultText) {
         const changed = resultText.split("\n").filter(l => l.startsWith("modified:") || l.startsWith("new file:")).length;
         if (changed > 0) {
           const entry = `\n## ${now}\n\n**Command**: \`${cmd}\`\n\n${resultText.slice(0, 500)}\n`;
-          logChange(entry);
+          logChange(entry, wsDir);
           api.logger.info(`code-change: detected ${changed} file changes`);
         }
         lastGitStatus = resultText;
@@ -73,14 +78,14 @@ export default definePluginEntry({
 
       if (cmd.includes("git diff") && resultText && resultText.length > 50) {
         const entry = `\n## ${now}\n\n**Command**: \`${cmd}\`\n\n\`\`\`diff\n${resultText.slice(0, 1000)}\n\`\`\`\n`;
-        logChange(entry);
+        logChange(entry, wsDir);
         api.logger.info(`code-change: logged git diff (${resultText.length} chars)`);
       }
 
       if ((cmd.includes("git commit") || cmd.includes("git push")) && resultText) {
         pendingVerification = { type: cmd.includes("commit") ? "commit" : "push", cmd, timestamp: Date.now() };
         const entry = `\n## ${now}\n\n**Command**: \`${cmd}\`\n\n${resultText.slice(0, 300)}\n\n_等待验证结果..._\n`;
-        logChange(entry);
+        logChange(entry, wsDir);
         api.logger.info(`code-change: logged commit/push, awaiting verification`);
       }
 
@@ -92,7 +97,7 @@ export default definePluginEntry({
           const passed = resultText && !resultText.includes("FAIL") && !resultText.includes("ERROR") && !resultText.includes("failed") && !resultText.includes("error") && !resultText.includes("0 passed");
           const verdict = passed ? "✅ 测试通过" : "⚠️ 测试可能失败";
           const entry = `\n## ${now} — 验证结果\n\n**验证类型**: ${pendingVerification.type}\n**命令**: \`${pendingVerification.cmd}\`\n**测试命令**: \`${cmd}\`\n**结果**: ${verdict}\n\n${resultText ? resultText.slice(0, 500) : "(无输出)"}\n`;
-          logChange(entry);
+          logChange(entry, wsDir);
           api.logger.info(`code-change: verification complete — ${verdict}`);
           pendingVerification = null;
         }
