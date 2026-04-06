@@ -17,65 +17,66 @@
 
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join } from "node:path";
 
-interface SkillConfig {
-  skillDir: string;
+function getSkillsDirs(): string[] {
+  const home = process.env.HOME || "/home/hhhh";
+  return [
+    join(process.cwd(), "skills"),
+    join(home, ".openclaw", "workspace", "skills"),
+    join(home, ".openclaw", "skills"),
+    join(home, ".npm-global", "lib", "node_modules", "openclaw", "skills"),
+  ];
 }
 
-function getConfig(api: { pluginConfig: Record<string, unknown>; pluginId?: string }): SkillConfig {
-  // skillDir is relative to workspace (cwd)
-  const pluginSkillDir = api.pluginConfig?.skillDir as string;
-  return {
-    skillDir: pluginSkillDir || "skills",
-  };
-}
-
-function listSkills(skillDir: string): Array<{ name: string; description: string }> {
+function listSkills(): Array<{ name: string; description: string }> {
+  const seen = new Set<string>();
   const skills: Array<{ name: string; description: string }> = [];
-  try {
-    const entries = readdirSync(skillDir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      const skildMdPath = join(skillDir, entry.name, "SKILL.md");
-      if (!existsSync(skildMdPath)) continue;
-
-      try {
-        const content = readFileSync(skildMdPath, "utf-8");
-        // Extract name and description from frontmatter
-        const nameMatch = content.match(/^---\s*\nname:\s*(.+?)\s*\n/m);
-        const descMatch = content.match(/^---\s*\n(?:name:.+\n)?description:\s*(.+?)\s*\n/m);
-        const name = nameMatch ? nameMatch[1].trim() : entry.name;
-        const description = descMatch ? descMatch[1].trim() : "";
-        skills.push({ name, description });
-      } catch {}
-    }
-  } catch {}
+  for (const dir of getSkillsDirs()) {
+    try {
+      if (!existsSync(dir)) continue;
+      const entries = readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        if (seen.has(entry.name)) continue;
+        seen.add(entry.name);
+        const skillMdPath = join(dir, entry.name, "SKILL.md");
+        if (!existsSync(skillMdPath)) continue;
+        try {
+          const content = readFileSync(skillMdPath, "utf-8");
+          const nameMatch = content.match(/^---\s*\nname:\s*(.+?)\s*\n/m);
+          const descMatch = content.match(/^---\s*\n(?:name:.+\n)?description:\s*(.+?)\s*\n/m);
+          const name = nameMatch ? nameMatch[1].trim() : entry.name;
+          const description = descMatch ? descMatch[1].trim() : "";
+          skills.push({ name, description });
+        } catch {}
+      }
+    } catch {}
+  }
   return skills;
 }
 
-function invokeSkill(skillDir: string, skillName: string): string {
-  // Try exact match first
-  const skillPath = join(skillDir, skillName, "SKILL.md");
-  if (existsSync(skillPath)) {
-    return readFileSync(skillPath, "utf-8");
-  }
-
-  // Try case-insensitive match
-  try {
-    const entries = readdirSync(skillDir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      if (entry.name.toLowerCase() === skillName.toLowerCase()) {
-        const path = join(skillDir, entry.name, "SKILL.md");
-        if (existsSync(path)) {
-          return readFileSync(path, "utf-8");
+function invokeSkill(skillName: string): string {
+  for (const dir of getSkillsDirs()) {
+    try {
+      if (!existsSync(dir)) continue;
+      const skillPath = join(dir, skillName, "SKILL.md");
+      if (existsSync(skillPath)) {
+        return readFileSync(skillPath, "utf-8");
+      }
+      // Case-insensitive match
+      const entries = readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        if (entry.name.toLowerCase() === skillName.toLowerCase()) {
+          const path = join(dir, entry.name, "SKILL.md");
+          if (existsSync(path)) return readFileSync(path, "utf-8");
         }
       }
-    }
-  } catch {}
-
-  return `Skill "${skillName}" not found. Available skills: ${listSkills(skillDir).map(s => s.name).join(", ") || "(none)"}`;
+    } catch {}
+  }
+  const available = listSkills().map(s => s.name).join(", ") || "(none)";
+  return `Skill "${skillName}" not found. Available: ${available}`;
 }
 
 export default definePluginEntry({
@@ -83,20 +84,14 @@ export default definePluginEntry({
   name: "Skill Invoker",
   description: "Skill tool for forced skill invocation (using-superpowers enforcement)",
   register(api) {
-    const cfg = getConfig(api);
-
     // ── skill tool ────────────────────────────────────────────────────────
-    // The core enforcement mechanism: AI MUST call this tool to get skill content
     api.registerTool({
       name: "skill",
       description: "Invoke a skill by name. MUST be called before taking any action if a relevant skill exists. Returns the full skill content to follow.",
       parameters: {},
       async execute(_id, params: { name?: string; list?: boolean }) {
-        const skillDir = cfg.skillDir;
-
-        // List all available skills
         if (params?.list) {
-          const skills = listSkills(skillDir);
+          const skills = listSkills();
           if (skills.length === 0) {
             return { content: [{ type: "text", text: "No skills found." }] };
           }
@@ -108,33 +103,21 @@ export default definePluginEntry({
           return { content: [{ type: "text", text: lines.join("\n") }] };
         }
 
-        // Invoke specific skill
         const skillName = params?.name;
         if (!skillName) {
-          const skills = listSkills(skillDir);
-          return {
-            content: [{
-              type: "text",
-              text: `Skill name required. Available: ${skills.map(s => s.name).join(", ") || "(none)"}`,
-            }],
-          };
+          const skills = listSkills();
+          return { content: [{ type: "text", text: `Skill name required. Available: ${skills.map(s => s.name).join(", ") || "(none)"}` }] };
         }
 
-        const content = invokeSkill(skillDir, skillName);
-        api.logger.info(`skill-invoker: invoked skill "${skillName}" (found=${!content.includes("not found")})`);
-
-        return {
-          content: [{
-            type: "text",
-            text: content,
-          }],
-        };
+        const content = invokeSkill(skillName);
+        api.logger.info(`skill-invoker: invoked "${skillName}" (found=${!content.includes("not found")})`);
+        return { content: [{ type: "text", text: content }] };
       },
     }, { optional: true });
 
     api.on("gateway_start", async () => {
-      const skills = listSkills(cfg.skillDir);
-      api.logger.info(`skill-invoker loaded — available skills: ${skills.map(s => s.name).join(", ")}`);
+      const skills = listSkills();
+      api.logger.info(`skill-invoker loaded — available skills: ${skills.map(s => s.name).join(", ") || "(none)"}`);
       return undefined;
     });
 

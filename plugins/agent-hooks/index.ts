@@ -39,11 +39,28 @@ const sessionSkillInvoked = new Map<string, boolean>();
 
 function listSkills(): string[] {
   try {
-    const skillDir = join(process.cwd(), "skills");
-    if (!existsSync(skillDir)) return [];
-    return readdirSync(skillDir, { withFileTypes: true })
-      .filter(e => e.isDirectory())
-      .map(e => e.name);
+    const home = process.env.HOME || "/home/hhhh";
+    const dirs = [
+      join(process.cwd(), "skills"),
+      join(home, ".openclaw", "workspace", "skills"),
+      join(home, ".openclaw", "skills"),
+      join(home, ".npm-global", "lib", "node_modules", "openclaw", "skills"),
+    ];
+    const seen = new Set<string>();
+    const names: string[] = [];
+    for (const dir of dirs) {
+      if (!existsSync(dir)) continue;
+      try {
+        const entries = readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (entry.isDirectory() && !seen.has(entry.name)) {
+            seen.add(entry.name);
+            names.push(entry.name);
+          }
+        }
+      } catch {}
+    }
+    return names;
   } catch {
     return [];
   }
