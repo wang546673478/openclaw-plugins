@@ -4,6 +4,36 @@
 > 基于 Claude Code v2.1.88 源码，2026-04-05
 > 最后更新：2026-04-06（源码分析 + plugin 完善）
 
+## 总体进度
+
+```
+P0 核心     7/7  ✅  100%
+P1 差异化   3/5  🟡  60%  (缺 Fork-Join Cache、Anti-Distillation)
+P2 Hooks   2/2  🟡  75%  (缺 PostPromptBuild、Pre/PostCommand、Idle、Wake)
+P3 Remote  2/3  🟡  67%  (缺 MCP OAuth)
+P4 辅助     3/4  🟡  75%  (缺 teamMemorySync)
+
+总体        14/20 ✅  70%
+            +5/20 🟡  25%
+            +1/20 ❌   5%  (架构性限制)
+```
+
+**当前 Plugin 矩阵（共 11 个）：**
+
+| Plugin | 功能 | 对应任务 |
+|--------|------|---------|
+| agent-hooks | 8个 lifecycle hooks + before/after_compaction | 0.0 Compact |
+| analytics | 工具使用统计 | 5.1 Analytics |
+| session-save | 会话摘要 + 真实决策提取 | 1.2 ExtractMemories |
+| subagent-aggregate | subagent 结果聚合 | 协作 |
+| code-change | git 检测 + test/lint 验证 | 2.4 VERIFICATION |
+| scheduled-tasks | 定时任务检查（prependContext） | 1.5 Agent Triggers |
+| brief-tool | 1-3句会话摘要 | 1.4 BriefTool |
+| away-summary | 离开摘要 + 注入 | 5.3 Away Summary |
+| http-inject | HTTP webhook → 事件注入 | 4.2 KAIROS |
+| coordinator | 多 agent 协调工具 | 2.1 Coordinator |
+| agent-snapshot | subagent 快照到 memory/snapshots/ | 2.3 Agent Snapshot |
+
 ---
 
 ## 筛选原则
@@ -154,8 +184,15 @@ feature('AGENT_TRIGGERS_REMOTE')
 // 多 Agent 编排：创建、销毁、路由
 ```
 
-**OpenClaw**：多 agent 已在讨论中，但无 coordinator 模式
-**优先级**：高
+**OpenClaw**：✅ 已实现 — `coordinator` plugin
+**2026-04-06 更新**：✅ coordinator plugin（4个工具：coordinator_fork/aggregate/status/fork_join）
+
+| 子任务 | 状态 |
+|--------|------|
+| coordinator_fork 工具 | ✅ 已实现 |
+| coordinator_aggregate 工具 | ✅ 已实现 |
+| coordinator_status 工具 | ✅ 已实现 |
+| coordinator_fork_join 工具 | ✅ 已实现 |
 
 ---
 
@@ -184,8 +221,15 @@ feature('AGENT_MEMORY_SNAPSHOT')
 // subagent 定期快照内存状态
 ```
 
-**OpenClaw**：无
-**优先级**：中
+**OpenClaw**：✅ 已实现 — `agent-snapshot` plugin
+**2026-04-06 更新**：✅ agent-snapshot plugin（subagent_ended 时写 memory/snapshots/）
+
+| 子任务 | 状态 |
+|--------|------|
+| subagent_ended hook | ✅ 已实现 |
+| session JSONL 解析 | ✅ 已实现 |
+| 快照写入 memory/snapshots/ | ✅ 已实现 |
+| 快照索引 index.md | ✅ 已实现 |
 
 ---
 
@@ -316,8 +360,16 @@ PrePromptBuild, PostPromptBuild,
 // 通过 MCP server 实现双向通信
 ```
 
-**OpenClaw**：Gateway 已有通道机制，可研究
-**优先级**：最高（KAIROS 核心）
+**OpenClaw**：✅ 已实现 — `http-inject` plugin
+**2026-04-06 更新**：✅ http-inject plugin（HTTP route + before_agent_reply 注入）
+
+| 子任务 | 状态 |
+|--------|------|
+| HTTP webhook 接收 | ✅ POST /kairos/event |
+| 事件队列存储 | ✅ plugin runtime store |
+| session_start 注入 | ✅ prependContext |
+| before_agent_reply 注入 | ✅ prependContext |
+| 事件确认/清除 | ✅ POST /kairos/ack |
 
 ---
 
@@ -458,12 +510,23 @@ P4（辅助）
 
 ## 2026-04-06 Plugin 完善记录
 
-### 本次修改
+### 今日新增（6个 plugin）
 
-| Plugin | 修改内容 | 对应进化任务 |
-|--------|---------|-------------|
-| session-save | 实现真实决策提取 + tool_call block 解析 | 1.2 ExtractMemories |
-| code-change | 新增 test/lint 验证逻辑 | 2.4 VERIFICATION_AGENT |
+| Plugin | 功能 | 对应任务 |
+|--------|------|---------|
+| brief-tool | 1-3句会话摘要 → memory/brief/ | 1.4 BriefTool |
+| away-summary | 离开摘要 → session_start 注入 | 5.3 Away Summary |
+| http-inject | HTTP webhook → prependContext 注入 | 4.2 KAIROS |
+| coordinator | 多 agent 协调工具（4个工具） | 2.1 Coordinator |
+| agent-snapshot | subagent 快照 → memory/snapshots/ | 2.3 Agent Snapshot |
+| scheduled-tasks | 定时任务 prependContext 提醒 | 1.5 Agent Triggers |
+
+### 今日修复
+
+| Plugin | 修复内容 | 对应任务 |
+|--------|---------|---------|
+| session-save | 真实决策提取 + tool_call block 解析（之前为空） | 1.2 ExtractMemories |
+| code-change | 新增 test/lint 验证逻辑 | 2.4 VERIFICATION |
 | agent-hooks | 新增 before_compaction + after_compaction hooks | 0.0 Compact 系统 |
 
 ### 剩余 Plugin 完善机会
@@ -471,15 +534,14 @@ P4（辅助）
 | Plugin | 待完善 | 难度 |
 |--------|--------|------|
 | session-save | 降低 minDuration 阈值（30s → 10s）| 低 |
-| analytics | 增加 subagent 异步处理 + 写入 memory/analytics.md | 中 |
-| scheduled-tasks | 支持更多 cron 格式 + 主动推送（不依赖 AI 回复）| 中 |
+| analytics | 增加 subagent 异步处理 + GrowthBook/Datadog | 中 |
+| scheduled-tasks | 主动推送（不依赖 AI 回复） | 中 |
 | agent-hooks | 可配置消息阈值 | 低 |
 
-### 待新增 Plugin
+### 无法 Plugin 弥补的空白
 
-| Plugin | 目标 | 优先级 |
-|--------|------|--------|
-| brief-tool | 生成 1-3 句会话摘要 | 🔴 高 |
-| away-summary | 用户离开时写入 memory/away/ | 🔴 高 |
-| http-inject | HTTP route 接收外部事件注入 agent | 🟡 中 |
-| coordinator | 多 agent 路由协调 | 🟡 中 |
+| 任务 | 原因 |
+|------|------|
+| Fork-Join Cache | sessions 完全独立，架构性不兼容 |
+| MCP OAuth | Gateway auth 层硬编码 |
+| Anti-Distillation | 无意义 |
