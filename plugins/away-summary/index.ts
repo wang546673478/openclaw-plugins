@@ -1,14 +1,14 @@
 /**
  * Away Summary Plugin
  *
- * Saves a one-liner summary on EVERY user message received.
- * Injects the latest summary on session_start.
- * No cron needed!
+ * Uses before_prompt_build to capture user message text.
+ * Saves one-liner on every prompt build (every AI turn).
+ * Injects latest summary on session_start.
  */
 
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import type {
-  PluginHookMessageReceivedEvent,
+  PluginHookBeforePromptBuildEvent,
   PluginHookSessionStartEvent,
 } from "openclaw/plugin-sdk/plugins/types.js";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
@@ -43,49 +43,63 @@ function getLatestSummary(wsDir: string, cfg: AwayConfig): string | null {
     if (!existsSync(dir)) return null;
     const files = require("node:fs").readdirSync(dir).filter(f => f === "last-summary.md");
     if (files.length === 0) return null;
-    const filepath = join(dir, files[0]);
-    return readFileSync(filepath, "utf-8").trim();
+    return readFileSync(join(dir, files[0]), "utf-8").trim();
   } catch {
     return null;
   }
 }
 
+function extractText(content: unknown): string {
+  if (typeof content === "string") return content.slice(0, 50).replace(/\n/g, " ");
+  if (Array.isArray(content)) {
+    for (const block of content) {
+      if (block && typeof block === "object") {
+        const b = block as Record<string, unknown>;
+        if (b.type === "text" && typeof b.text === "string") {
+          return b.text.slice(0, 50).replace(/\n/g, " ");
+        }
+      }
+    }
+  }
+  return "";
+}
+
 export default definePluginEntry({
   id: "away-summary",
   name: "Away Summary",
-  description: "Save one-liner summary on every user message, inject on session_start",
+  description: "Capture user message on every prompt build, inject summary on session_start",
   register(api) {
     const cfg = getConfig(api);
 
-    // ── message_received: save one-liner on every user message ─────────────
-    api.on("message_received", async (
-      event: PluginHookMessageReceivedEvent,
-      ctx: { sessionKey?: string }
+    // ── before_prompt_build: capture user message text ───────────────────
+    api.on("before_prompt_build", async (
+      event: PluginHookBeforePromptBuildEvent,
+      _ctx: { sessionKey?: string }
     ) => {
       try {
-        const wsDir = getWorkspaceDir();
-        const dir = join(wsDir, cfg.awayDir);
-        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+        const messages = event.messages as Array<{ role?: string; content?: unknown }>;
+        if (!messages || messages.length === 0) return undefined;
+
+        // Find last user message
+        let userText = "";
+        for (let i = messages.length - 1; i >= 0; i--) {
+          const msg = messages[i];
+          if (msg.role === "user") {
+            userText = extractText(msg.content);
+            break;
+          }
+        }
+
+        if (!userText) userText = "[用户活动]";
 
         const now = new Date();
         const time = now.toTimeString().slice(0, 8);
+        const summary = `[${time}] ${userText}`;
 
-        // Feishu maps plainText to envelope.content
-        let userText = "[用户活动]";
-        const obj = event as Record<string, unknown>;
-        const envelope = obj?.envelope as Record<string, unknown> | undefined;
-        const content = envelope?.content;
-        if (typeof content === "string") {
-          userText = content.slice(0, 50).replace(/\n/g, " ");
-        } else if (content instanceof Uint8Array) {
-          try {
-            userText = new TextDecoder().decode(content).slice(0, 50).replace(/\n/g, " ");
-          } catch {}
-        }
-
-        const summary = `[${time}] ${userText || "用户消息"}`;
-        const filepath = join(dir, "last-summary.md");
-        writeFileSync(filepath, summary, "utf-8");
+        const wsDir = getWorkspaceDir();
+        const dir = join(wsDir, cfg.awayDir);
+        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+        writeFileSync(join(dir, "last-summary.md"), summary, "utf-8");
 
         api.logger.debug(`away-summary: saved "${summary.slice(0, 40)}..."`);
       } catch (e) {
@@ -113,6 +127,6 @@ export default definePluginEntry({
       }
     });
 
-    api.logger.info("away-summary plugin registered: message_received, session_start");
+    api.logger.info("away-summary plugin registered: before_prompt_build, session_start");
   },
 });
