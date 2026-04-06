@@ -1,0 +1,24 @@
+{
+  "id": "loop-detector",
+  "name": "Loop Detector",
+  "description": "Detect repeated tool calls with identical parameters and inject a break-loop reminder to prevent infinite loops",
+  "version": "1.0.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "threshold": {
+        "type": "number",
+        "description": "Number of consecutive identical calls to trigger warning (default 3)",
+        "default": 3,
+        "minimum": 2
+      },
+      "windowMs": {
+        "type": "number",
+        "description": "Time window in ms for loop detection (default 30000 = 30s)",
+        "default": 30000,
+        "minimum": 5000
+      }
+    }
+  }
+}

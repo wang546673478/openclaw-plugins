@@ -1,0 +1,21 @@
+{
+  "name": "@openclaw/plugin-loop-detector",
+  "version": "1.0.0",
+  "description": "Detect repeated tool calls and inject break-loop reminders",
+  "main": "index.js",
+  "openclaw": {
+    "plugin": {
+      "id": "loop-detector",
+      "name": "Loop Detector",
+      "description": "Detect repeated tool calls with identical parameters and inject a break-loop reminder to prevent infinite loops",
+      "version": "1.0.0"
+    }
+  },
+  "keywords": [
+    "openclaw",
+    "plugin",
+    "loop",
+    "detector"
+  ],
+  "license": "MIT"
+}

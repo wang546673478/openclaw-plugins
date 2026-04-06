@@ -36,3 +36,24 @@ P4 辅助     4/4  ✅  100%  (llm-logger 新增)
 总体        14/20 ✅ → 15/20 ✅  75%
             +5/20 🟡  25%
 ```
+# 2026-04-07 Evolution Progress
+
+## 新增 Plugin: loop-detector
+
+**功能**: 检测连续重复的工具调用（相同工具+相同参数），通过 before_prompt_build 注入循环中断提醒。
+
+**对应任务**: P2 Hooks 扩展（弥补 after_tool_call 无法注入 context 的限制）
+
+**文件**:
+- `plugins/loop-detector/index.ts` (135行)
+- `plugins/loop-detector/openclaw.plugin.json`
+- `plugins/loop-detector/package.json`
+- `plugins/loop-detector/tsconfig.json`
+
+**实现细节**:
+- `after_tool_call`: 跟踪每个工具调用，记录 (tool, paramsHash, timestamp)
+- `before_prompt_build`: 检查是否有循环被检测到，注入 prependContext 警告
+- `session_end`: 清理该 session 的状态
+- 可配置: threshold (默认3次), windowMs (默认30s)
+
+**测试**: TypeScript 编译通过，无错误
