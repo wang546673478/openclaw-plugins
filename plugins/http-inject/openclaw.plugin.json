@@ -1,0 +1,30 @@
+{
+  "id": "http-inject",
+  "name": "HTTP Inject (KAIROS)",
+  "description": "Receive external HTTP webhooks and inject them as messages into agent sessions via before_agent_reply (KAIROS Core)",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "port": {
+        "type": "number",
+        "description": "HTTP port for webhook receiver",
+        "default": 18799
+      },
+      "injectHook": {
+        "type": "string",
+        "description": "Hook to use for injection",
+        "default": "before_agent_reply"
+      },
+      "sessionKey": {
+        "type": "string",
+        "description": "Target session key for injection (default: main session)",
+        "default": "agent:main:feishu:direct:ou_0c7c7d016cfae1f86c32f0ad68f2a00f"
+      }
+    }
+  }
+}

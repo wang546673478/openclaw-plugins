@@ -1,0 +1,20 @@
+{
+  "id": "coordinator",
+  "name": "Coordinator",
+  "description": "Multi-agent coordination tools: parallel spawn, result aggregation, task routing (P1 2.1 Coordinator Mode)",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "maxParallel": {
+        "type": "number",
+        "description": "Maximum parallel subagents to spawn",
+        "default": 5
+      }
+    }
+  }
+}
