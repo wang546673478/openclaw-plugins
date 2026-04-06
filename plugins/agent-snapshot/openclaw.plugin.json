@@ -1,0 +1,24 @@
+{
+  "id": "agent-snapshot",
+  "name": "Agent Snapshot",
+  "description": "Write subagent session snapshots to memory/snapshots/ on subagent_ended (P1 2.3 Agent Memory Snapshot)",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "snapshotDir": {
+        "type": "string",
+        "default": "memory/snapshots"
+      },
+      "minDuration": {
+        "type": "number",
+        "description": "Minimum subagent duration in ms to create snapshot",
+        "default": 30000
+      }
+    }
+  }
+}
