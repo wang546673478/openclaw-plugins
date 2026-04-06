@@ -1,7 +1,7 @@
 # OpenClaw Harness 完整度报告
 
 > 日期：2026-04-06
-> 更新：commit 后
+> 更新：2026-04-06 16:20（源码分析 + 内置能力核对）
 
 ---
 
@@ -60,13 +60,60 @@ P4 辅助     3/4  🟡  75%
 
 ---
 
+## OpenClaw 内置能力（重要对照）
+
+### 内置 Bundled Hooks（4个）
+
+| Hook | 触发 | 功能 | 与我们的 Plugin 关系 |
+|------|------|------|------------------|
+| session-memory | `/new`, `/reset` | 自动保存会话摘要到 memory/ | 与 session-save 功能重叠，触发时机不同，可并存 |
+| bootstrap-extra-files | agent:bootstrap | 注入额外 bootstrap 文件 | 互补 |
+| command-logger | command | 记录命令到 audit log | 与 code-change 互补 |
+| boot-md | gateway:startup | 启动时运行 BOOT.md | 互补 |
+
+### 内置记忆系统
+
+| 能力 | 说明 | 我们的对应 |
+|------|------|----------|
+| 三层记忆 | MEMORY.md + memory/YYYY-MM-DD.md + SQLite | ✅ 等价实现 |
+| Auto memory flush | compaction 前自动提醒保存 | ✅ HEARTBEAT 机制 |
+| memory_search | 向量+关键词混合搜索 | ✅ 已有 |
+| memory_get | 读取指定 memory 文件 | ✅ 已有 |
+| session-memory hook | /new 或 /reset 时保存摘要 | 与 session-save 各有触发时机 |
+
+### 内置工具
+
+| 工具 | 说明 |
+|------|------|
+| sessions_spawn | 启动 subagent |
+| sessions_send | 发送消息到其他 session |
+| memory_search | 搜索记忆 |
+| Skill 工具 | ❌ 不存在（需要 skill-invoker plugin）|
+
+---
+
 ## Skill 机制三层互补
 
 | 机制 | 提供 |
 |------|------|
 | OpenClaw 内置 | skill 名称 + 描述 → system prompt |
-| skill 工具 | 完整 SKILL.md 内容 |
+| skill 工具（skill-invoker） | 完整 SKILL.md 内容 |
 | enforcement hook | 强制提醒调用 |
+
+---
+
+## 路径修复记录（2026-04-06 16:20）
+
+### 问题
+plugin 用 `process.cwd()` 写到 `$HOME/memory/`，但 workspace 是 `~/.openclaw/workspace/`
+
+### 修复
+5个 plugin 修复路径计算，迁移旧文件到正确位置：
+- session-save ✅
+- brief-tool ✅
+- away-summary ✅
+- agent-snapshot ✅
+- code-change ✅
 
 ---
 
