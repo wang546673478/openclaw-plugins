@@ -1,49 +1,51 @@
 # HEARTBEAT.md
 
-## SessionMemory 检查（双重机制）
+> **重要更新 2026-04-06：** 定时记忆保存已改用 `openclaw cron`，不再依赖 HEARTBEAT。
 
-### 机制一：定期保存
+## 定时任务（可靠触发，已迁移到 cron）
 
-每30分钟检查一次：
+### session-memory（每30分钟）
+```
+openclaw cron add --name "session-memory" --cron "*/30 * * * *"
+```
+功能：检查距上次保存是否超过30分钟，读取最近会话摘要，追加保存到 memory/YYYY-MM-DD.md
 
-1. 读取 `memory/.session-memory-state.json` 获取 `lastSavedAt`
-2. 如果距上次保存 **≥ 30 分钟**：
-   - 调用 **session-memory** skill，执行"机制一：定期保存"
-3. 如果不需要保存：回复 `HEARTBEAT_OK`
+### auto-dream（每60分钟）
+```
+openclaw cron add --name "auto-dream" --cron "0 * * * *"
+```
+功能：检查距上次整合是否超过24小时，整合会话摘要到 memory/YYYY-MM-DD-dream.md
 
-### 机制二：查询结束提取
+---
 
-每次 heartbeat **都检查**（不只是30分钟间隔）：
+## HEARTBEAT 机制（作为备用）
 
+OpenClaw 的 heartbeat 机制本身还在，但作为 cron 的备用。
+
+### 机制一：查询结束提取（HEARTBEAT 时检查）
+
+每次 heartbeat **都检查**：
 1. 检查最近消息：是否**连续 5 轮无 tool call**
 2. 如果是：
-   - 调用 **session-memory** skill，执行"机制二：查询结束提取"
+   - 调用 **session-memory** skill，执行"查询结束提取"
 3. 如果否：回复 `HEARTBEAT_OK`
 
-## Auto-Dream 检查（跨会话整合）
+### 机制二：compaction 前提醒（before_compaction hook）
 
-每小时检查一次：
+在上下文压缩前，通过 before_compaction hook 注入记忆保存提醒。
 
-1. 读取 `memory/.dream-state.json` 获取 `lastConsolidatedAt`
-2. 读取 `memory/.dream-lock.json` 检查是否被锁定
-3. 如果：
-   - 距上次整合 **≥ 24 小时**
-   - 此期间有 **≥ 5 个新会话**（通过 `sessions_list` 判断）
-   - 没有其他任务在运行（锁不存在或已过期）
-   
-   则：调用 **auto-dream** skill，执行跨会话记忆整合
+---
 
-4. 如果不满足条件：回复 `HEARTBEAT_OK`
+## 为什么用 cron 替代 HEARTBEAT？
 
-## 为什么都在 HEARTBEAT 里？
+- HEARTBEAT 依赖 AI 主动响应，AI 忙时可能跳过
+- cron 由系统调度，可靠性更高
+- cron 完成会触发主 session heartbeat，AI 能看到结果
 
-- OpenClaw 的 heartbeat 会周期性触发
-- 比 cron 更轻量，适合这种"检查+可能执行"的场景
-- 如果需要更精确的定时，可以 later 迁移到 cron tool
+---
 
 ## 状态文件
 
 - `memory/.session-memory-state.json` — session-memory 状态
 - `memory/.dream-state.json` — auto-dream 状态
-- `memory/.dream-lock.json` — auto-dream 锁
-# test
+- `~/.openclaw/cron/jobs.json` — cron 任务定义（系统文件）
