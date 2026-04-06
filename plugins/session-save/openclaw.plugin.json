@@ -8,7 +8,7 @@
     "properties": {
       "enabled": { "type": "boolean", "default": true },
       "saveDir": { "type": "string", "default": "memory/sessions" },
-      "minDuration": { "type": "number", "default": 30000 }
+      "minDuration": { "type": "number", "default": 10000 }
     }
   }
 }

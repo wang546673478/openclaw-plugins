@@ -124,6 +124,12 @@ export default definePluginEntry({
       event: PluginHookAgentEndEvent,
       ctx: { workspaceDir?: string }
     ) => {
+      // Skip saving very short sessions
+      if (event.durationMs !== undefined && event.durationMs < cfg.minDuration) {
+        api.logger.debug(`session-save: skipped short session ${event.durationMs}ms < ${cfg.minDuration}ms`);
+        return undefined;
+      }
+
       const { task, decisions, tools } = extractSummary(event.messages);
 
       const sessionId = event.sessionId || ctx.sessionKey;
