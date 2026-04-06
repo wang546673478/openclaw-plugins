@@ -10,6 +10,8 @@
  */
 
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
+import { readdirSync, existsSync } from "node:fs";
+import { join } from "node:path";
 import type {
   PluginHookBeforePromptBuildEvent,
   PluginHookAfterToolCallEvent,
@@ -32,6 +34,21 @@ const stats = {
   subagentsEnded: 0,
 };
 
+// Track whether skill tool was invoked per session
+const sessionSkillInvoked = new Map<string, boolean>();
+
+function listSkills(): string[] {
+  try {
+    const skillDir = join(process.cwd(), "skills");
+    if (!existsSync(skillDir)) return [];
+    return readdirSync(skillDir, { withFileTypes: true })
+      .filter(e => e.isDirectory())
+      .map(e => e.name);
+  } catch {
+    return [];
+  }
+}
+
 export default definePluginEntry({
   id: "agent-hooks",
   name: "Agent Hooks",
@@ -43,16 +60,30 @@ export default definePluginEntry({
       event: PluginHookBeforePromptBuildEvent,
       ctx: { sessionKey?: string; trigger?: string }
     ) => {
-      api.logger.debug(`before_prompt_build: session=${ctx.sessionKey} trigger=${ctx.trigger} messages=${(event.messages as unknown[]).length}`);
+      const sessionKey = ctx.sessionKey || "default";
+      api.logger.debug(`before_prompt_build: session=${sessionKey} trigger=${ctx.trigger} messages=${(event.messages as unknown[]).length}`);
 
-      // Example: inject reminder about memory for long sessions
-      const msgCount = (event.messages as unknown[]).length;
-      if (msgCount > 20) {
-        return {
-          prependContext: "【记忆提醒】这是一个长对话。请在适当时机使用 memory_search 工具检索历史记忆。\n",
-        };
+      const prepends: string[] = [];
+
+      // ── using-superpowers enforcement ─────────────────────────────────
+      // If skill tool hasn't been invoked yet in this session, remind
+      const skillInvoked = sessionSkillInvoked.get(sessionKey) ?? false;
+      if (!skillInvoked) {
+        const availableSkills = listSkills();
+        if (availableSkills.length > 0) {
+          prepends.push(`【Skill 提醒】有 ${availableSkills.length} 个可用 skill。请先调用 \`skill({ list: true })\` 查看可用 skill。如果你的任务与某个 skill 相关，必须先调用 \`skill({ name: "<skill-name>" })\` 获取 skill 内容后再行动。\n`);
+        }
       }
 
+      // ── memory reminder for long sessions ──────────────────────────────
+      const msgCount = (event.messages as unknown[]).length;
+      if (msgCount > 20) {
+        prepends.push("【记忆提醒】这是一个长对话。请在适当时机使用 memory_search 工具检索历史记忆。\n");
+      }
+
+      if (prepends.length > 0) {
+        return { prependContext: prepends.join("\n") };
+      }
       return undefined;
     });
 
@@ -64,6 +95,12 @@ export default definePluginEntry({
     ) => {
       stats.toolCalls++;
       api.logger.debug(`after_tool_call: tool=${event.toolName} session=${ctx.sessionKey} duration=${event.durationMs}ms`);
+
+      // Track skill tool invocations for using-superpowers enforcement
+      if (event.toolName === "skill") {
+        sessionSkillInvoked.set(ctx.sessionKey || "default", true);
+        api.logger.debug(`skill-invocation: tracked for session ${ctx.sessionKey}`);
+      }
 
       if (event.error) {
         api.logger.warn(`Tool ${event.toolName} failed: ${event.error}`);

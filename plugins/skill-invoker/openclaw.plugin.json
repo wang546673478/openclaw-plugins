@@ -1,0 +1,19 @@
+{
+  "id": "skill-invoker",
+  "name": "Skill Invoker",
+  "description": "Provides a Skill tool for forced skill invocation (using-superpowers enforcement)",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "skillDir": {
+        "type": "string",
+        "default": "skills"
+      }
+    }
+  }
+}
