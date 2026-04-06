@@ -1,0 +1,25 @@
+{
+  "id": "compact",
+  "name": "Compact",
+  "description": "Three-layer context compaction: warning + microCompact + full compact (P0 0.0 Compact System)",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "warningThreshold": {
+        "type": "number",
+        "description": "Token count to trigger warning (default 15000)",
+        "default": 15000
+      },
+      "microCompactThreshold": {
+        "type": "number",
+        "description": "Token count to trigger microCompact (default 20000)",
+        "default": 20000
+      }
+    }
+  }
+}

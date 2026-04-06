@@ -1,0 +1,19 @@
+{
+  "id": "diagnostic-tracking",
+  "name": "Diagnostic Tracking",
+  "description": "Track tool errors, latency, token usage, and auto-compaction events (P2 diagnosticTracking)",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "diagnosticDir": {
+        "type": "string",
+        "default": "memory/diagnostics"
+      }
+    }
+  }
+}
