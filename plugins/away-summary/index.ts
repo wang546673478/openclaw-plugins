@@ -1,13 +1,14 @@
 /**
  * Away Summary Plugin
  *
- * Detects user absence on session_end and writes a summary.
- * On next session_start, injects the away summary if available.
+ * Writes session summary on EVERY agent_end (every AI response cycle).
+ * This ensures we capture every conversation.
+ * On session_start, injects the most recent away summary.
  */
 
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import type {
-  PluginHookSessionEndEvent,
+  PluginHookAgentEndEvent,
   PluginHookSessionStartEvent,
 } from "openclaw/plugin-sdk/plugins/types.js";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
@@ -15,16 +16,12 @@ import { join } from "node:path";
 
 interface AwayConfig {
   awayDir: string;
-  minDuration: number;
-  awayThreshold: number;
   maxSummaries: number;
 }
 
 function getConfig(api: { pluginConfig: Record<string, unknown> }): AwayConfig {
   return {
     awayDir: (api.pluginConfig?.awayDir as string) || "memory/away",
-    minDuration: (api.pluginConfig?.minDuration as number) || 60000,
-    awayThreshold: (api.pluginConfig?.awayThreshold as number) || 300000,
     maxSummaries: (api.pluginConfig?.maxSummaries as number) || 10,
   };
 }
@@ -101,32 +98,39 @@ function saveAwaySummary(summary: string, wsDir: string, cfg: AwayConfig): void 
 export default definePluginEntry({
   id: "away-summary",
   name: "Away Summary",
-  description: "Write away summary to memory/away/ on session_end and inject on next session_start",
+  description: "Write away summary to memory/away/ on agent_end and inject on session_start",
   register(api) {
     const cfg = getConfig(api);
 
-    api.on("session_end", async (
-      event: PluginHookSessionEndEvent
+    // ── agent_end: save summary ─────────────────────────────────────────
+    // Fires at the end of EVERY AI response cycle - captures every conversation
+    api.on("agent_end", async (
+      event: PluginHookAgentEndEvent
     ) => {
-      if (!event.durationMs || event.durationMs < cfg.minDuration) {
-        api.logger.debug(`away-summary: session too short (${event.durationMs}ms < ${cfg.minDuration}ms), skipping`);
-        return undefined;
-      }
-
       try {
-        const summary = `会话时长 ${Math.round(event.durationMs / 1000)}s，${event.messageCount} 条消息`;
+        // Only save if session had meaningful content
+        const duration = event.durationMs || 0;
+        const messages = event.messageCount || 0;
+
+        // Skip very short/no-op sessions
+        if (messages < 2) {
+          return undefined;
+        }
+
+        const summary = `会话 ${messages} 条消息，耗时 ${Math.round(duration / 1000)}s`;
         const wsDir = getWorkspaceDir();
         saveAwaySummary(summary, wsDir, cfg);
-        api.logger.info(`away-summary: saved away summary`);
+        api.logger.info(`away-summary: saved (messages=${messages}, duration=${duration}ms)`);
       } catch (e) {
-        api.logger.info(`away-summary: error on session_end: ${e}`);
+        api.logger.info(`away-summary: error on agent_end: ${e}`);
       }
 
       return undefined;
     });
 
+    // ── session_start: inject most recent away summary ──────────────────
     api.on("session_start", async (
-      event: PluginHookSessionStartEvent
+      _event: PluginHookSessionStartEvent
     ) => {
       try {
         const wsDir = getWorkspaceDir();
@@ -142,6 +146,6 @@ export default definePluginEntry({
       }
     });
 
-    api.logger.info("away-summary plugin registered hooks: session_end, session_start");
+    api.logger.info("away-summary plugin registered hooks: agent_end, session_start");
   },
 });
