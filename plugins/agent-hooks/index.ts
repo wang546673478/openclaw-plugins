@@ -19,6 +19,8 @@ import type {
   PluginHookSubagentSpawningEvent,
   PluginHookSubagentEndedEvent,
   PluginHookToolContext,
+  PluginHookBeforeCompactionEvent,
+  PluginHookAfterCompactionEvent,
 } from "openclaw/plugin-sdk/plugins/types.js";
 
 // Simple in-memory stats (reset on gateway restart)
@@ -33,7 +35,7 @@ const stats = {
 export default definePluginEntry({
   id: "agent-hooks",
   name: "Agent Hooks",
-  description: "Agent lifecycle hooks - before_prompt_build, after_tool_call, agent_end, session lifecycle",
+  description: "Agent lifecycle hooks - before_prompt_build, before_compaction, after_tool_call, agent_end, session lifecycle",
   register(api) {
     // ── before_prompt_build ─────────────────────────────────────────────
     // Called before each prompt is built. Can inject prependContext / appendSystemContext.
@@ -130,6 +132,29 @@ export default definePluginEntry({
       return undefined;
     });
 
+    // ── before_compaction ─────────────────────────────────────────────
+    // Called before context compaction runs. Good for injecting memory reminders.
+    api.on("before_compaction", async (
+      event: PluginHookBeforeCompactionEvent,
+      ctx: { sessionKey?: string }
+    ) => {
+      api.logger.info(`before_compaction: session=${ctx.sessionKey} messages=${event.messageCount} tokens=${event.tokenCount}`);
+
+      // Inject memory flush reminder before compaction
+      const reminder = "【记忆提醒】上下文即将压缩。请将本轮重要信息保存到 memory 文件（MEMORY.md 或 memory/YYYY-MM-DD.md），避免丢失。\n";
+      return { prependContext: reminder };
+    });
+
+    // ── after_compaction ───────────────────────────────────────────────
+    // Called after compaction finishes. Good for verifying compaction results.
+    api.on("after_compaction", async (
+      event: PluginHookAfterCompactionEvent,
+      ctx: { sessionKey?: string }
+    ) => {
+      api.logger.info(`after_compaction: session=${ctx.sessionKey} compacted=${event.compactedCount} remaining=${event.messageCount} tokens=${event.tokenCount}`);
+      return undefined;
+    });
+
     // ── gateway_start ─────────────────────────────────────────────────────
     api.on("gateway_start", async () => {
       api.logger.info("agent-hooks plugin loaded");
@@ -142,6 +167,6 @@ export default definePluginEntry({
       return undefined;
     });
 
-    api.logger.info("agent-hooks plugin registered hooks: before_prompt_build, after_tool_call, agent_end, session_start, session_end, subagent_spawning, subagent_ended");
+    api.logger.info("agent-hooks plugin registered hooks: before_prompt_build, before_compaction, after_compaction, after_tool_call, agent_end, session_start, session_end, subagent_spawning, subagent_ended");
   },
 });

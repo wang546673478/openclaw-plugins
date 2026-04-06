@@ -1,0 +1,29 @@
+{
+  "id": "brief-tool",
+  "name": "Brief Tool",
+  "description": "Generate 1-3 sentence session summary on agent_end and save to memory/brief/ (P0 BriefTool)",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "briefDir": {
+        "type": "string",
+        "default": "memory/brief"
+      },
+      "minDuration": {
+        "type": "number",
+        "description": "Minimum session duration in ms to generate brief",
+        "default": 30000
+      },
+      "maxSentences": {
+        "type": "number",
+        "description": "Maximum number of sentences in brief",
+        "default": 3
+      }
+    }
+  }
+}

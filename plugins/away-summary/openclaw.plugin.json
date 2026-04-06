@@ -1,0 +1,34 @@
+{
+  "id": "away-summary",
+  "name": "Away Summary",
+  "description": "Write away summary to memory/away/ on session_end and inject on next session_start (P4 5.3 Away Summary)",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "awayDir": {
+        "type": "string",
+        "default": "memory/away"
+      },
+      "minDuration": {
+        "type": "number",
+        "description": "Minimum session duration in ms to qualify",
+        "default": 60000
+      },
+      "awayThreshold": {
+        "type": "number",
+        "description": "Inactivity threshold in ms to consider user away",
+        "default": 300000
+      },
+      "maxSummaries": {
+        "type": "number",
+        "description": "Maximum number of away summaries to keep",
+        "default": 10
+      }
+    }
+  }
+}

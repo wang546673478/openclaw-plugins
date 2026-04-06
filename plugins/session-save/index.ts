@@ -23,30 +23,69 @@ function getConfig(api: { pluginConfig: Record<string, unknown> }) {
 }
 
 function extractSummary(messages: unknown[]): { task: string; decisions: string[]; tools: ToolCall[] } {
-  const msgs = messages as Array<{ role?: string; content?: unknown }>;
+  const msgs = messages as Array<{ role?: string; content?: unknown; refusal?: unknown }>;
   const userMsgs = msgs.filter(m => m.role === "user");
-  const assistantMsgs = msgs.filter(m => m.role === "assistant");
+  const assistantMsgs = msgs.filter(m => m.role === "assistant" && !m.refusal);
 
   // First user message as task
   const task = userMsgs[0]
     ? extractText(userMsgs[0].content).slice(0, 200)
     : "未知任务";
 
-  // Collect tool calls from assistant messages
+  // Collect tool calls from assistant messages via tool_call blocks
   const toolCounts = new Map<string, number>();
   for (const msg of assistantMsgs) {
-    const text = extractText(msg.content);
-    const matches = text.matchAll(/tools?\.(?:read|write|exec|edit|search|image|web_search)/gi);
-    for (const m of matches) {
-      const tool = m[0].toLowerCase();
-      toolCounts.set(tool, (toolCounts.get(tool) || 0) + 1);
+    const content = msg.content;
+    if (Array.isArray(content)) {
+      for (const block of content) {
+        if (block && typeof block === "object" && (block as Record<string, unknown>).type === "tool_call") {
+          const tc = block as { name?: string };
+          if (tc.name) {
+            const name = tc.name.toLowerCase();
+            toolCounts.set(name, (toolCounts.get(name) || 0) + 1);
+          }
+        }
+      }
     }
   }
   const tools = [...toolCounts.entries()]
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count);
 
-  return { task, decisions: [], tools };
+  // Extract key decisions from assistant messages
+  const decisions: string[] = [];
+  const DECISION_PATTERNS = [
+    /(?:决定|decision|chosen|选择|采用了|确定用|用|建|写|改|删|修复|更新)\s*[：:]\s*(.{10,80})/gi,
+    /(?:结论是|所以|因此|最终|最后)[:：]\s*(.{10,80})/gi,
+    /(?:ok|okay|done|完成|好)[:：]?\s*(?:了\s*)?(.{5,50})/gi,
+    /(?:will|going to|准备)[:：]\s*(.{10,60})/gi,
+  ];
+
+  for (const msg of assistantMsgs) {
+    const text = extractText(msg.content);
+    for (const pattern of DECISION_PATTERNS) {
+      pattern.lastIndex = 0;
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        const decision = match[1].trim();
+        if (decision && decision.length > 5 && !decisions.includes(decision)) {
+          decisions.push(decision.slice(0, 100));
+        }
+      }
+    }
+    // Also extract from tool results that indicate a decision was made
+    if (text.includes("已创建") || text.includes("已更新") || text.includes("已删除") || text.includes("created") || text.includes("updated") || text.includes("deleted")) {
+      const lines = text.split("\n").filter(l => l.trim().length > 0).slice(0, 3);
+      for (const line of lines) {
+        const trimmed = line.trim().slice(0, 100);
+        if (trimmed.length > 10 && !decisions.includes(trimmed)) {
+          decisions.push(trimmed);
+        }
+      }
+    }
+  }
+
+  return { task, decisions: decisions.slice(0, 10), tools };
 }
 
 function extractText(content: unknown): string {
@@ -80,7 +119,7 @@ export default definePluginEntry({
         return undefined;
       }
 
-      const { task, tools } = extractSummary(event.messages);
+      const { task, decisions, tools } = extractSummary(event.messages);
       const now = new Date();
       const date = now.toISOString().split("T")[0];
       const time = now.toTimeString().slice(0, 8);
@@ -92,16 +131,20 @@ export default definePluginEntry({
         `**Session ID**: ${sessionId}`,
         `**Duration**: ${event.durationMs ? Math.round(event.durationMs / 1000) + "s" : "unknown"}`,
         `**Success**: ${event.success ? "✅" : "❌"}`,
-        `**Error**: ${event.error || "none"}`,
+        event.error ? `**Error**: ${event.error}` : null,
         "",
         `## Task`,
         task,
+        "",
+        decisions.length > 0
+          ? [`## Key Decisions`, ...decisions.map((d, i) => `${i + 1}. ${d}`)].join("\n")
+          : null,
         "",
         `## Tools Used`,
         tools.length > 0
           ? tools.map(t => `- ${t.name}: ${t.count}x`).join("\n")
           : "_none_",
-      ].join("\n");
+      ].filter(Boolean).join("\n");
 
       try {
         const dir = join(process.cwd(), cfg.saveDir);
