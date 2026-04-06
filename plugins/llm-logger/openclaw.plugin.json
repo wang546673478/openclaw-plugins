@@ -1,0 +1,12 @@
+{
+  "id": "llm-logger",
+  "name": "LLM Logger",
+  "description": "Logs LLM input/output, token usage, and call stats for analytics and debugging",
+  "version": "0.0.1",
+  "hooks": ["llm_input", "llm_output", "session_end"],
+  "tools": [],
+  "entry": "index.js",
+  "compatibility": {
+    "openclaw": ">=0.1.0"
+  }
+}
