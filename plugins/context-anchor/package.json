@@ -1,0 +1,15 @@
+{
+  "name": "@openclaw/plugin-context-anchor",
+  "version": "1.0.0",
+  "description": "Track recent files/tools and inject context reminders before prompts in long sessions",
+  "main": "index.ts",
+  "type": "module",
+  "keywords": [
+    "openclaw",
+    "plugin",
+    "context",
+    "memory"
+  ],
+  "author": "",
+  "license": "MIT"
+}

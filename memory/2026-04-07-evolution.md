@@ -1,59 +1,39 @@
-# 2026-04-07 Evolution Progress
+# Evolution Progress — 2026-04-07
 
-## Auto-Evolution 完成
+## 今日新增 Plugin
 
-### 新增 Plugin: llm-logger
+| Plugin | 功能 | 行数 | 对应任务 |
+|--------|------|------|---------|
+| context-anchor | 追踪最近文件/工具，长会话注入上下文锚点提醒 | ~150 | 新增（会话上下文增强） |
 
-| 字段 | 值 |
-|------|-----|
-| Plugin | llm-logger |
-| 功能 | LLM input/output 记录 + token 使用统计 |
-| Hooks | llm_input, llm_output, session_end |
-| 对应任务 | 5.1 Analytics/Telemetry |
-| 难度 | 低 |
-| 代码行 | ~130 |
+### context-anchor 实现细节
 
-### 实现内容
-- `llm_input` hook: 捕获模型调用输入 (provider, model, prompt, history, images)
-- `llm_output` hook: 捕获模型输出 (texts count, token usage)
-- `session_end` hook: 汇总 LLM 调用统计并写入 memory/llm-logs/
-- 日志格式: JSONL (一行一条)，按日期分文件
+- **Hook**: `after_tool_call` → 追踪最近文件操作和工具调用
+- **Hook**: `before_prompt_build` → 消息数 > 20 且有锚点时，注入上下文提醒
+- **Hook**: `session_end` → 清理会话状态
+- **Config**: `messageThreshold` (默认 20), `maxRecentTools` (默认 5), `maxRecentFiles` (默认 5)
+- **无核心修改**：纯 plugin 实现
 
-### 文件
-- `plugins/llm-logger/index.ts` ✅
-- `plugins/llm-logger/openclaw.plugin.json` ✅
-- `plugins/llm-logger/package.json` ✅
+## Hooks 覆盖状态
 
-## 进度汇总 (2026-04-07 05:04)
+| Hook | 状态 |
+|------|------|
+| after_tool_call | ✅ 7 个 plugin 使用 |
+| before_prompt_build | ✅ 新增 context-anchor 使用 |
+| before_compaction | ✅ agent-hooks, compact, diagnostic-tracking |
+| after_compaction | ✅ agent-hooks, compact, diagnostic-tracking |
+| session_end | ✅ 7 个 plugin 使用 |
+| llm_input/llm_output | ✅ llm-logger |
+| subagent_ended | ✅ agent-snapshot, subagent-aggregate |
+| subagent_spawning | ✅ agent-snapshot, coordinator |
 
-```
-P0 核心     7/7  ✅  100%
-P1 差异化   3/5  🟡  60%
-P2 Hooks   2/2  🟡  75%  (llm_input/llm_output 新增覆盖)
-P3 Remote  2/3  🟡  67%
-P4 辅助     4/4  ✅  100%  (llm-logger 新增)
+## 剩余未实现（需要核心支持）
 
-总体        14/20 ✅ → 15/20 ✅  75%
-            +5/20 🟡  25%
-```
-# 2026-04-07 Evolution Progress
+- PostPromptBuild hook — 需要 OpenClaw 核心支持
+- PreCommand/PostCommand hooks — 需要 OpenClaw 核心支持
+- Idle/Wake hooks — 需要 OpenClaw 核心支持
+- Stop/StopFailure hooks — 需要 OpenClaw 核心支持
 
-## 新增 Plugin: loop-detector
+## Git Commit
 
-**功能**: 检测连续重复的工具调用（相同工具+相同参数），通过 before_prompt_build 注入循环中断提醒。
-
-**对应任务**: P2 Hooks 扩展（弥补 after_tool_call 无法注入 context 的限制）
-
-**文件**:
-- `plugins/loop-detector/index.ts` (135行)
-- `plugins/loop-detector/openclaw.plugin.json`
-- `plugins/loop-detector/package.json`
-- `plugins/loop-detector/tsconfig.json`
-
-**实现细节**:
-- `after_tool_call`: 跟踪每个工具调用，记录 (tool, paramsHash, timestamp)
-- `before_prompt_build`: 检查是否有循环被检测到，注入 prependContext 警告
-- `session_end`: 清理该 session 的状态
-- 可配置: threshold (默认3次), windowMs (默认30s)
-
-**测试**: TypeScript 编译通过，无错误
+- `context-anchor`: 新 plugin，追踪长会话上下文并注入锚点提醒

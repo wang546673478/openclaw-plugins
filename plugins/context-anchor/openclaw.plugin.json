@@ -1,0 +1,34 @@
+{
+  "id": "context-anchor",
+  "name": "Context Anchor",
+  "description": "Track recent files/tools and inject context reminders before prompts in long sessions",
+  "version": "1.0.0",
+  "entry": "index.ts",
+  "hooks": [
+    "after_tool_call",
+    "before_prompt_build",
+    "session_end",
+    "gateway_start"
+  ],
+  "tools": [],
+  "config": {
+    "messageThreshold": {
+      "type": "number",
+      "default": 20,
+      "description": "Minimum message count before injecting anchor reminder"
+    },
+    "maxRecentTools": {
+      "type": "number",
+      "default": 5,
+      "description": "Max recent tools to track"
+    },
+    "maxRecentFiles": {
+      "type": "number",
+      "default": 5,
+      "description": "Max recent files to track"
+    }
+  },
+  "tasks": [
+    "context-anchor"
+  ]
+}
