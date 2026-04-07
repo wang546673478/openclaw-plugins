@@ -5,7 +5,14 @@
   "version": "0.0.1",
   "hooks": ["llm_input", "llm_output", "session_end"],
   "tools": [],
-  "entry": "index.js",
+  "configSchema": {
+    "logDir": {
+      "type": "string",
+      "default": "memory/analytics",
+      "description": "Directory to store LLM logs"
+    }
+  },
+  "entry": "index.ts",
   "compatibility": {
     "openclaw": ">=0.1.0"
   }
