@@ -1,0 +1,20 @@
+{
+  "id": "tool-result-archive",
+  "name": "Tool Result Archive",
+  "description": "Archives important tool outputs to memory/tool-archive/ for later retrieval via memory_search",
+  "version": "1.0.0",
+  "hooks": ["tool_result_persist", "gateway_start"],
+  "tools": [],
+  "pluginConfig": {
+    "maxOutputLen": {
+      "type": "number",
+      "default": 800,
+      "description": "Max characters to archive per tool output"
+    },
+    "maxParamLen": {
+      "type": "number",
+      "default": 200,
+      "description": "Max characters for param summary (currently unused but available)"
+    }
+  }
+}

@@ -538,6 +538,12 @@ P4（辅助）
 | scheduled-tasks | 主动推送（不依赖 AI 回复） | 中 |
 | agent-hooks | 可配置消息阈值 | 低 |
 
+### 2026-04-07 Plugin 更新
+
+| Plugin | 功能 | 对应任务 | 行数 |
+|--------|------|---------|------|
+| tool-result-archive | tool_result_persist hook → memory/tool-archive/ | tool_result_persist（新增 hook 机会） | 71 |
+
 ### 无法 Plugin 弥补的空白
 
 | 任务 | 原因 |
@@ -548,76 +554,4 @@ P4（辅助）
 
 ---
 
-## 【研究更新 2026-04-07】
 
-### 1. OpenClaw 生态最新动态（2026年3-4月）
-
-**ClawHub 技能市场爆发性增长**
-- 截至2026年3月，ClawHub 已收录超过 **13,000** 个社区构建的 skills/tools
-- OpenClaw v2026.3.22 引入原生 skills 搜索/安装/更新流程，ClawHub marketplace 重大升级
-- 安装命令：`openclaw skill install <name>`，技能安装到 `~/.openclaw/skills/`
-- 技能可通过 `openclaw skill publish ./my-skill` 发布到 ClawHub
-- **安全警告（Cisco AI安全团队）**：发现第三方技能中存在数据泄露和提示注入风险，安装前务必审查作者 GitHub 历史和源代码
-
-来源：
-- https://skywork.ai/skypage/en/clawhub-openclaw-skills/2036705101164941312
-- https://www.pcbuildadvisor.com/best-openclaw-skills-plugins-and-automations-the-ultimate-guide-2026/
-- https://www.stack-junkie.com/blog/openclaw-skills-clawhub-guide
-- https://www.reddit.com/r/myclaw/comments/1s1g205/openclaw_v2026322_is_out_clawhub_marketplace_btw/
-
----
-
-### 2. AI Agent Memory 架构趋势（2026）
-
-**LOCOMO Benchmark — 长对话记忆评估标准**
-- ECAI 2025 发布，是目前 AI 记忆领域最全面的头对头评估数据集
-- Mem0 是该基准的领先实现者
-
-**六大主流 Memory Framework**
-1. **Mem0** — 多层记忆（语义、短期、长期），支持用户级向量检索，`mem0_client.search()` API
-2. **LlamaIndex Memory** — 跨会话持久化，设计用于知识密集型 agent
-3. **向量数据库集成**（Qdrant、Pinecone）— RAG-based memory，HIPAA/GDPR 合规方案
-4. **Agent Context Windows** — 2026年重点方向：解决 agent "遗忘" 问题
-
-来源：
-- https://mem0.ai/blog/state-of-ai-agent-memory-2026
-- https://machinelearningmastery.com/the-6-best-ai-agent-memory-frameworks-you-should-try-in-2026/
-- https://sparkco.ai/blog/agent-context-windows-in-2026-how-to-stop-your-ai-from-forgetting-everything
-
----
-
-### 3. Claude Code 最新进展（2026年）
-
-**核心能力提升**
-- 100万 Token 上下文窗口
-- SWE-bench Verified 得分：**80.8%**
-- **Plan Mode** — 受监督的自主执行模式
-- **Agent Teams** — 并行开发多 agent 协作
-- MCP（Model Context Protocol）深度集成，连接完整工具链
-
-**新发布 /dream + Auto Dream 功能**
-- 解决 Claude Code 长期记忆短板问题
-- 自动梦游/睡前模式，持续学习上下文
-
-**Anthropic 官方动态**
-- Anthropic Skill 系统支持单元测试（2026年新特性）
-- Skill-MD 模式成为事实标准：用 markdown 描述 AI agent 技能规范
-
-来源：
-- https://tosea.ai/blog/claude-code-complete-guide-2026
-- https://alaknandainfoplus.com/blog/claude-code-ai-powered-development-2026
-- https://medium.com/@joe.njenga/how-im-using-new-claude-code-dream-auto-dream-to-never-lose-memory-again-ba0575f2881a
-- https://medium.com/@pankaj_pandey/anthropic-just-added-unit-tests-for-ai-skills-heres-what-actually-changed-and-why-it-matters-0c67b37dedde
-
----
-
-### 4. Autonomous Agent Patterns（Skill 市场上的架构设计模式）
-
-MCP Market 上有专门的 "Autonomous Agent Patterns" skill，覆盖：
-- **Think-Decide-Act-Observe 循环** — 核心 agent 行为模型
-- **Multi-model orchestration** — 多模型协作编排
-- **标准化工具 schema** — 文件操作、终端访问
-- **安全设计** — 细粒度权限、沙盒、human-in-the-loop 审批工作流
-
-来源：
-- https://mcpmarket.com/tools/skills/autonomous-agent-patterns-3

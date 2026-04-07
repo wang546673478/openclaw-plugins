@@ -1,0 +1,11 @@
+{
+  "name": "@workspace/tool-result-archive",
+  "version": "1.0.0",
+  "description": "Archives tool outputs to memory/tool-archive/ for later retrieval",
+  "main": "index.ts",
+  "openclaw": {
+    "type": "plugin"
+  },
+  "keywords": ["openclaw", "plugin", "memory", "tool", "archive"],
+  "license": "MIT"
+}
