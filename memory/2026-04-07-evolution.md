@@ -1,59 +1,27 @@
 # Evolution Progress — 2026-04-07
 
-## 今日完成
+## 新增 Plugin
 
-### 新增 Plugin: `verification-agent` ✅
+### context-monitor (compactWarningHook)
 
-- **任务**: P1 2.4 VERIFICATION_AGENT
-- **功能**: 
-  - `after_tool_call` 自动检测代码变更（write/edit 工具 + 验证命令 exec）
-  - 检测到代码文件写入时记录到 `memory/verification/pending-verifications.json`
-  - `verification_status` 工具：查看待验证请求
-  - `verification_trigger` 工具：手动触发验证子 agent
-- **文件**: 
-  - `plugins/verification-agent/index.ts`
-  - `plugins/verification-agent/openclaw.plugin.json`
-  - `plugins/verification-agent/package.json`
-- **状态**: 语法验证通过（括号匹配 ✅）
+**对应任务**: 0.0 Compact 系统 — `compactWarningHook`（提前警告）
 
-## 当前 Plugin 矩阵（13个）
+**功能**: 在上下文增长速度过快时，在 `before_compaction` 触发之前主动注入警告。
 
-| Plugin | 功能 | 状态 |
-|--------|------|------|
-| verification-agent | 自动验证代码变更 | ✅ 新增 |
-| ... | (其余 12 个同昨日) | 略 |
+**实现方式**:
+- 使用 `before_prompt_build` 追踪每轮消息数变化（velocity）
+- 两个触发条件：
+  1. **velocity 警告**：单轮新增消息 >= velocityThreshold（默认 3 条）
+  2. **absolute 警告**：总消息数 >= absoluteThreshold（默认 40 条）
+- compaction 发生后重置警告标志（5 轮后重新启用）
+- 避免重复警告（warningCooldownMs，默认 2 分钟）
 
-### 新增 Plugin: `model-router` ✅
+**文件**:
+- `plugins/context-monitor/index.ts` (223 行)
+- `plugins/context-monitor/openclaw.plugin.json`
+- `plugins/context-monitor/package.json`
 
-- **任务**: P0 1.6 Tool Search（模型选择智能路由）/ P2 Hooks 扩展
-- **功能**:
-  - `before_model_resolve` hook 实现
-  - 基于 prompt 关键词的模型/提供商路由
-  - 支持配置 defaultModel / defaultProvider / rules
-  - 首个利用 `before_model_resolve` 的 plugin（之前无人使用此 hook）
-- **文件**:
-  - `plugins/model-router/index.ts` (108行，括号平衡 63/63)
-  - `plugins/model-router/openclaw.plugin.json`
-  - `plugins/model-router/package.json`
-- **状态**: 语法验证通过
-
-## 当前 Plugin 矩阵（14个）
-
-| Plugin | 功能 | 状态 |
-|--------|------|------|
-| model-router | before_model_resolve 模型路由 | ✅ 新增 |
-| verification-agent | 自动验证代码变更 | ✅ 今日 |
-| ... | (其余 12 个) | 略 |
-
-## Hooks 覆盖率
-
-- before_model_resolve: ✅ 新增（首个使用者）
-- 其余 hooks 同昨日
-
-## 待推进
-
-- scheduled-tasks 主动推送（需定时检查，非依赖 AI 回复）
-- session-save minDuration 降低（30s → 10s）
-- agent-hooks 阈值可配置化
-- analytics GrowthBook/Datadog（中等难度）
-- llm_input / llm_output hooks（新发现的 hook，低难度）
+**为什么是低难度 + 有价值**:
+- 只用已注册的 hooks，不碰核心
+- 填补 `before_compaction` 之前的"预警"空白
+- 223 行 < 100 行纯逻辑（注释占约 40%）

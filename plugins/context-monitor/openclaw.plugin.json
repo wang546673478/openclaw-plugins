@@ -1,0 +1,42 @@
+{
+  "id": "context-monitor",
+  "name": "Context Monitor",
+  "description": "Monitors context growth velocity and injects early warnings before compaction threshold is reached — the compactWarningHook from Claude Code's PreCompact lifecycle",
+  "version": "1.0.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "velocityThreshold": {
+        "type": "number",
+        "description": "Warn if messages grow by this many in one turn",
+        "default": 3,
+        "minimum": 1,
+        "maximum": 20
+      },
+      "absoluteThreshold": {
+        "type": "number",
+        "description": "Warn if total messages exceed this count (early warning before compaction)",
+        "default": 40,
+        "minimum": 10,
+        "maximum": 200
+      },
+      "warningCooldownMs": {
+        "type": "number",
+        "description": "Minimum ms between repeated warnings",
+        "default": 120000,
+        "minimum": 30000
+      },
+      "minMessages": {
+        "type": "number",
+        "description": "Minimum messages before warnings start",
+        "default": 15,
+        "minimum": 5
+      }
+    }
+  }
+}

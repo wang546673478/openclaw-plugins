@@ -1,0 +1,10 @@
+{
+  "name": "@openclaw/plugin-context-monitor",
+  "version": "1.0.0",
+  "description": "Context growth monitor with early compaction warnings (compactWarningHook)",
+  "type": "module",
+  "main": "index.ts",
+  "openclaw": {
+    "plugin": true
+  }
+}
