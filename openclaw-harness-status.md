@@ -1,7 +1,7 @@
 # OpenClaw Harness 完整度报告
 
-> 日期：2026-04-06
-> 更新：2026-04-06 16:20（源码分析 + 内置能力核对）
+> 日期：2026-04-07
+> 更新：2026-04-07 12:04（新增 model-router plugin）
 
 ---
 
@@ -21,7 +21,7 @@ P4 辅助     3/4  🟡  75%
 
 ---
 
-## Plugin 矩阵（12个）
+## Plugin 矩阵（14个）
 
 | Plugin | Hooks/Tools | 功能 | 对应任务 |
 |--------|------------|------|---------|
@@ -37,6 +37,8 @@ P4 辅助     3/4  🟡  75%
 | coordinator | 4 tools | 多 agent 协调工具 | 2.1 Coordinator |
 | agent-snapshot | subagent_ended | subagent 快照 | 2.3 Agent Snapshot |
 | skill-invoker | skill tool | 强制 skill 调用 | using-superpowers |
+| verification-agent | after_tool_call+tools | 自动验证代码变更 | 2.4 VERIFICATION |
+| model-router | before_model_resolve | 模型/提供商路由 | 1.6 Tool Search / P2 Hooks |
 
 ---
 
