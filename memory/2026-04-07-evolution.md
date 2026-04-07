@@ -1,43 +1,74 @@
-# Evolution Log 2026-04-07
+# 2026-04-07 Evolution
 
-## 研究更新
+## Research Updates
 
-### GitHub 新发现
+### GitHub Findings
 
-| 项目 | URL | 说明 |
-|------|-----|------|
-| MemOS Cloud OpenClaw Plugin | https://github.com/MemTensor/MemOS-Cloud-OpenClaw-Plugin | 长期记忆 + 上下文召回 |
-| Neo4j Agent Memory Plugin | https://github.com/johnymontana/openclaw-neo4j-agent-memory-plugin | 图数据库原生记忆 |
-| Agent Control Plugin | https://github.com/agentcontrol/openclaw-plugin | 安全/策略层 |
-| ClawRecipes | https://github.com/rjdjohnston/clawcipes | Agent/team 脚手架 |
-| swarmclaw | https://github.com/swarmclawai/swarmclaw | 多 Agent 编排面板 |
+- **henrikrexed/openclaw-observability-plugin**  
+  https://github.com/henrikrexed/openclaw-observability-plugin  
+  Uses typed plugin hooks to capture full agent lifecycle for observability. Good reference architecture.
 
-### 新增 hook 发现
+- **cdot65/prisma-airs-plugin-openclaw** (Palo Alto Networks)  
+  https://github.com/cdot65/prisma-airs-plugin-openclaw  
+  Comprehensive plugin: 12 hooks, scanner adapter, config resolution, TTL cache, security/DLP/audit. Excellent hook pattern reference.
 
-`tool_result_persist` — 在工具结果写入 transcript 前拦截，可修改或补充存档。未被任何现有 plugin 使用，是实现工具输出归档的完美时机。
+- **cbuntingde/openclaw-plugins**  
+  https://github.com/cbuntingde/openclaw-plugins  
+  Community custom plugins for automation/integration.
 
-## Plugin 实现
+- **win4r/openclaw-a2a-gateway**  
+  https://github.com/win4r/openclaw-a2a-gateway  
+  A2A protocol gateway plugin for agent-to-agent communication.
 
-### tool-result-archive ✅
+- **rjdjohnston/clawcipes** (ClawRecipes)  
+  https://github.com/rjdjohnston/clawcipes  
+  OpenClaw plugin for scaffolding agents/teams from Markdown recipes.
 
-- **路径**: `plugins/tool-result-archive/`
-- **Hook**: `tool_result_persist` + `gateway_start`
-- **功能**: 工具输出归档到 `memory/tool-archive/YYYY-MM-DD.md`
-- **行数**: 71 行（< 100 行约束 ✅）
-- **TypeScript 编译**: ✅ 通过
+- **snarktank/antfarm**  
+  https://github.com/snarktank/antfarm  
+  Agent team builder for OpenClaw — define team of specialized agents in one command.
 
-**归档策略**:
-- `web_fetch`, `image`, `memory_search`, `video_frames` → 总是归档
-- `read`, `exec`, `memory_get` → 内容 > 50 字符才归档
+- **sundial-org/awesome-openclaw-skills** (554 stars)  
+  https://github.com/sundial-org/awesome-openclaw-skills  
+  Curated skills list with self-improving-agent, code-explainer, cli-developer, cron-gen.
 
-## Git
+- **VoltAgent/awesome-openclaw-skills** (44.6k stars)  
+  https://github.com/VoltAgent/awesome-openclaw-skills  
+  Largest OpenClaw skills collection — 519 skills across security, coding, gaming, productivity.
+
+## Plugin Implemented
+
+### context-stats (NEW — 257 lines)
+
+**What**: Tracks message counts, token estimates, and tool call stats across the agent lifecycle. Writes per-session JSON snapshots to `memory/stats/` plus a `_summary.json`.
+
+**Hooks used (10 total)**:
+- session_start / session_end
+- before_prompt_build
+- after_tool_call
+- agent_end
+- before_compaction / after_compaction
+- subagent_spawning / subagent_ended
+- gateway_stop
+
+**Token estimation**: ~4 chars/token for English, ~2 for CJK, with block-level content parsing.
+
+**Output files**:
+- `memory/stats/<sessionKey>.json` — per-session snapshot with full event log
+- `memory/stats/_summary.json` — all sessions overview
+
+**对应任务**: P2 Hooks 完整版覆盖 / P5 Observability
+
+**Status**: ✅ Implemented 2026-04-07
+
+## Git Commit
 
 ```
-git add plugins/tool-result-archive/
-git commit -m "feat(plugin): tool-result-archive — hook tool_result_persist → memory/tool-archive
-
-- Archives tool outputs (web_fetch, image, read, exec, etc.) to memory/tool-archive/YYYY-MM-DD.md
-- Enables memory_search to retrieve past tool results beyond transcript window
-- 71 lines, TypeScript compiles clean
-- Hooks: tool_result_persist, gateway_start"
+plugin: add context-stats — lifecycle token/stats tracking to memory/stats/
 ```
+
+## Notes
+
+- Prisma AIRS plugin hook patterns (12 hooks, scanner adapter, TTL cache) are good future reference for security-oriented plugins.
+- Observability plugin confirms typed hook approach is the right pattern.
+- Next opportunity: `compact-warning` (early warning before compaction threshold) or PostPromptBuild hook addition to agent-hooks.

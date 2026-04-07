@@ -1,0 +1,26 @@
+{
+  "id": "context-stats",
+  "name": "Context Stats",
+  "description": "Tracks message counts, token estimates, and tool call stats across the agent lifecycle. Writes periodic snapshots to memory/stats/ for observability and analysis.",
+  "version": "1.0.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "statsDir": {
+        "type": "string",
+        "description": "Directory to write stats JSON files",
+        "default": "memory/stats"
+      },
+      "logLevel": {
+        "type": "string",
+        "enum": ["debug", "info", "warn", "error"],
+        "default": "info"
+      }
+    }
+  }
+}

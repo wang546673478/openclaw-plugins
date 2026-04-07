@@ -1,0 +1,9 @@
+{
+  "name": "openclaw-context-stats",
+  "version": "1.0.0",
+  "description": "Tracks context/token stats across agent lifecycle",
+  "main": "index.ts",
+  "openclaw": {
+    "plugin": true
+  }
+}
