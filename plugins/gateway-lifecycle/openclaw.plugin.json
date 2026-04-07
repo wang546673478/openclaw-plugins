@@ -1,0 +1,22 @@
+{
+  "id": "gateway-lifecycle",
+  "name": "Gateway Lifecycle",
+  "description": "Tracks gateway startup/shutdown, session lifecycle events, and uptime stats (P4 5.2 Background Tasks)",
+  "version": "1.0.0",
+  "entry": "index.ts",
+  "hooks": [
+    "gateway_start",
+    "gateway_stop",
+    "session_start",
+    "session_end"
+  ],
+  "tools": [],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  },
+  "compatibility": {
+    "openclaw": ">=0.1.0"
+  }
+}

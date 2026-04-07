@@ -1,0 +1,22 @@
+{
+  "name": "@openclaw/plugin-gateway-lifecycle",
+  "version": "1.0.0",
+  "description": "Tracks gateway startup/shutdown, session lifecycle events, and uptime stats",
+  "main": "index.js",
+  "openclaw": {
+    "plugin": {
+      "id": "gateway-lifecycle",
+      "name": "Gateway Lifecycle",
+      "description": "Tracks gateway startup/shutdown, session lifecycle events, and uptime stats (P4 5.2 Background Tasks)",
+      "version": "1.0.0"
+    }
+  },
+  "keywords": [
+    "openclaw",
+    "plugin",
+    "gateway",
+    "lifecycle",
+    "uptime"
+  ],
+  "license": "MIT"
+}
