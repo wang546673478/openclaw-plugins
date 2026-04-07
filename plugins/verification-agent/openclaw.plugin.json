@@ -1,0 +1,32 @@
+{
+  "id": "verification-agent",
+  "name": "Verification Agent",
+  "description": "Automatically verify code changes by spawning verification subagents. Detects code writes and verification commands, stores pending requests for review.",
+  "version": "1.0.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enable/disable automatic verification detection"
+      },
+      "verifyOnWrite": {
+        "type": "boolean",
+        "default": true,
+        "description": "Log file writes as potential verification triggers"
+      },
+      "verifyOnExec": {
+        "type": "boolean",
+        "default": false,
+        "description": "Detect and log verification commands (test/lint/build) from exec"
+      },
+      "maxFileSize": {
+        "type": "number",
+        "default": 100000,
+        "description": "Max file size (bytes) to consider for verification"
+      }
+    }
+  }
+}

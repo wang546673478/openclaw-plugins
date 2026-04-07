@@ -1,0 +1,17 @@
+{
+  "name": "@openclaw/plugin-verification-agent",
+  "version": "1.0.0",
+  "description": "Automatically verify code changes (P1 2.4 VERIFICATION_AGENT)",
+  "type": "module",
+  "main": "index.ts",
+  "keywords": ["openclaw", "plugin", "verification", "testing"],
+  "openclaw": {
+    "plugin": {
+      "id": "verification-agent",
+      "name": "Verification Agent",
+      "description": "Auto-detect code changes and trigger verification",
+      "hooks": ["after_tool_call"],
+      "tools": ["verification_status", "verification_trigger"]
+    }
+  }
+}

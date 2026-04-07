@@ -1,39 +1,31 @@
 # Evolution Progress — 2026-04-07
 
-## 今日新增 Plugin
+## 今日完成
 
-| Plugin | 功能 | 行数 | 对应任务 |
-|--------|------|------|---------|
-| context-anchor | 追踪最近文件/工具，长会话注入上下文锚点提醒 | ~150 | 新增（会话上下文增强） |
+### 新增 Plugin: `verification-agent` ✅
 
-### context-anchor 实现细节
+- **任务**: P1 2.4 VERIFICATION_AGENT
+- **功能**: 
+  - `after_tool_call` 自动检测代码变更（write/edit 工具 + 验证命令 exec）
+  - 检测到代码文件写入时记录到 `memory/verification/pending-verifications.json`
+  - `verification_status` 工具：查看待验证请求
+  - `verification_trigger` 工具：手动触发验证子 agent
+- **文件**: 
+  - `plugins/verification-agent/index.ts`
+  - `plugins/verification-agent/openclaw.plugin.json`
+  - `plugins/verification-agent/package.json`
+- **状态**: 语法验证通过（括号匹配 ✅）
 
-- **Hook**: `after_tool_call` → 追踪最近文件操作和工具调用
-- **Hook**: `before_prompt_build` → 消息数 > 20 且有锚点时，注入上下文提醒
-- **Hook**: `session_end` → 清理会话状态
-- **Config**: `messageThreshold` (默认 20), `maxRecentTools` (默认 5), `maxRecentFiles` (默认 5)
-- **无核心修改**：纯 plugin 实现
+## 当前 Plugin 矩阵（13个）
 
-## Hooks 覆盖状态
+| Plugin | 功能 | 状态 |
+|--------|------|------|
+| verification-agent | 自动验证代码变更 | ✅ 新增 |
+| ... | (其余 12 个同昨日) | 略 |
 
-| Hook | 状态 |
-|------|------|
-| after_tool_call | ✅ 7 个 plugin 使用 |
-| before_prompt_build | ✅ 新增 context-anchor 使用 |
-| before_compaction | ✅ agent-hooks, compact, diagnostic-tracking |
-| after_compaction | ✅ agent-hooks, compact, diagnostic-tracking |
-| session_end | ✅ 7 个 plugin 使用 |
-| llm_input/llm_output | ✅ llm-logger |
-| subagent_ended | ✅ agent-snapshot, subagent-aggregate |
-| subagent_spawning | ✅ agent-snapshot, coordinator |
+## 待推进
 
-## 剩余未实现（需要核心支持）
-
-- PostPromptBuild hook — 需要 OpenClaw 核心支持
-- PreCommand/PostCommand hooks — 需要 OpenClaw 核心支持
-- Idle/Wake hooks — 需要 OpenClaw 核心支持
-- Stop/StopFailure hooks — 需要 OpenClaw 核心支持
-
-## Git Commit
-
-- `context-anchor`: 新 plugin，追踪长会话上下文并注入锚点提醒
+- scheduled-tasks 主动推送（需定时检查，非依赖 AI 回复）
+- session-save minDuration 降低（30s → 10s）
+- agent-hooks 阈值可配置化
+- analytics GrowthBook/Datadog（中等难度）
