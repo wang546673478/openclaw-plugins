@@ -1,0 +1,11 @@
+{
+  "name": "model-router",
+  "version": "1.0.0",
+  "description": "Route prompts to different models via before_model_resolve hook",
+  "main": "index.js",
+  "type": "module",
+  "keywords": ["openclaw", "plugin", "model", "router"],
+  "peerDependencies": {
+    "openclaw": "*"
+  }
+}

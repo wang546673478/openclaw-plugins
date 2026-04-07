@@ -23,9 +23,37 @@
 | verification-agent | 自动验证代码变更 | ✅ 新增 |
 | ... | (其余 12 个同昨日) | 略 |
 
+### 新增 Plugin: `model-router` ✅
+
+- **任务**: P0 1.6 Tool Search（模型选择智能路由）/ P2 Hooks 扩展
+- **功能**:
+  - `before_model_resolve` hook 实现
+  - 基于 prompt 关键词的模型/提供商路由
+  - 支持配置 defaultModel / defaultProvider / rules
+  - 首个利用 `before_model_resolve` 的 plugin（之前无人使用此 hook）
+- **文件**:
+  - `plugins/model-router/index.ts` (108行，括号平衡 63/63)
+  - `plugins/model-router/openclaw.plugin.json`
+  - `plugins/model-router/package.json`
+- **状态**: 语法验证通过
+
+## 当前 Plugin 矩阵（14个）
+
+| Plugin | 功能 | 状态 |
+|--------|------|------|
+| model-router | before_model_resolve 模型路由 | ✅ 新增 |
+| verification-agent | 自动验证代码变更 | ✅ 今日 |
+| ... | (其余 12 个) | 略 |
+
+## Hooks 覆盖率
+
+- before_model_resolve: ✅ 新增（首个使用者）
+- 其余 hooks 同昨日
+
 ## 待推进
 
 - scheduled-tasks 主动推送（需定时检查，非依赖 AI 回复）
 - session-save minDuration 降低（30s → 10s）
 - agent-hooks 阈值可配置化
 - analytics GrowthBook/Datadog（中等难度）
+- llm_input / llm_output hooks（新发现的 hook，低难度）

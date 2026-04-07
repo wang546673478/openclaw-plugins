@@ -1,0 +1,52 @@
+{
+  "id": "model-router",
+  "name": "Model Router",
+  "description": "Route prompts to different models/providers via before_model_resolve hook. Enable P0 model selection intelligence.",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "logLevel": {
+        "type": "string",
+        "enum": ["debug", "info", "warn"],
+        "default": "info"
+      },
+      "defaultModel": {
+        "type": "string",
+        "description": "Default model when no rules match"
+      },
+      "defaultProvider": {
+        "type": "string",
+        "description": "Default provider when no rules match"
+      },
+      "rules": {
+        "type": "array",
+        "description": "Routing rules evaluated in order; first match wins",
+        "default": [],
+        "items": {
+          "type": "object",
+          "required": ["keywords", "model"],
+          "properties": {
+            "keywords": {
+              "type": "array",
+              "description": "Keywords to match in prompt (OR logic)",
+              "items": { "type": "string" }
+            },
+            "model": {
+              "type": "string",
+              "description": "Model ID to route to when matched"
+            },
+            "provider": {
+              "type": "string",
+              "description": "Provider ID to route to when matched (optional)"
+            }
+          }
+        }
+      }
+    }
+  }
+}
